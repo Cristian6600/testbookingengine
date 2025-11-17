@@ -202,26 +202,36 @@ class DashboardView(View):
                      .values("id")
                      ).count()
 
-        # get outcoming guests
+        # get invoiced
         invoiced = (Booking.objects
                     .filter(created__range=today_range)
                     .exclude(state="DEL")
                     .aggregate(Sum('total'))
                     )
 
+        # --- NUEVO: % ocupación ---
+        total_rooms = Room.objects.count() or 0
+        confirmed_count = Booking.objects.filter(state='NEW').count()
+        ocupacion_pct = 0.0
+        if total_rooms > 0:
+            ocupacion_pct = round((confirmed_count / total_rooms) * 100, 2)
+
         # preparing context data
         dashboard = {
             'new_bookings': new_bookings,
             'incoming_guests': incoming,
             'outcoming_guests': outcoming,
-            'invoiced': invoiced
-
+            'invoiced': invoiced,
+            'ocupacion_pct': ocupacion_pct,
+            'confirmed_count': confirmed_count,
+            'total_rooms': total_rooms
         }
 
         context = {
             'dashboard': dashboard
         }
         return render(request, "dashboard.html", context)
+
 
 
 class RoomDetailsView(View):
