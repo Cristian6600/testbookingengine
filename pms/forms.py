@@ -56,3 +56,15 @@ class BookingFormExcluded(ModelForm):
             'total': forms.HiddenInput(),
             'state': forms.HiddenInput(),
         }
+
+class BookingDatesForm(forms.Form):
+    checkin = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    checkout = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+
+    def clean(self):
+        cleaned = super().clean()
+        ci = cleaned.get('checkin')
+        co = cleaned.get('checkout')
+        if ci and co and ci >= co:
+            raise forms.ValidationError("La fecha de salida debe ser posterior a la de entrada.")
+        return cleaned

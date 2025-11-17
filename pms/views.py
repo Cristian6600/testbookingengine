@@ -8,6 +8,8 @@ from .form_dates import Ymd
 from .forms import *
 from .models import Room
 from .reservation_code import generate
+from django.contrib import messages
+from django.shortcuts import get_object_or_404
 
 
 class BookingSearchView(View):
@@ -254,3 +256,40 @@ class RoomsView(View):
             'rooms': rooms
         }
         return render(request, "rooms.html", context)
+    
+
+class EditBookingDatesView(View):
+    def get(self, request, pk):
+        booking = get_object_or_404(Booking, id=pk)
+        form = BookingDatesForm(initial={'checkin': booking.checkin, 'checkout': booking.checkout})
+        return render(request, "edit_booking_dates.html", {"form": form, "booking": booking})
+
+    def post(self, request, pk):
+        booking = get_object_or_404(Booking, id=pk)
+        form = BookingDatesForm(request.POST)
+        if form.is_valid():
+            new_checkin = form.cleaned_data['checkin']
+            new_checkout = form.cleaned_data['checkout']
+
+            # comprobar solapamiento con otras reservas del mismo room (estado NEW)
+            conflicts = Booking.objects.filter(
+                room=booking.room,
+                state='NEW'
+            ).exclude(id=booking.id).filter(
+                checkin__lt=new_checkout,
+                checkout__gt=new_checkin
+            )
+
+            if conflicts.exists():
+                form.add_error(None, "No hay disponibilidad para las fechas seleccionadas")
+                return render(request, "edit_booking_dates.html", {"form": form, "booking": booking})
+
+            # si no hay conflictos, actualizar
+            booking.checkin = new_checkin
+            booking.checkout = new_checkout
+            booking.save()
+            messages.success(request, "Fechas actualizadas correctamente")
+            return redirect('home')  # o la URL que uses para listar reservas
+
+        return render(request, "edit_booking_dates.html", {"form": form, "booking": booking})
+
