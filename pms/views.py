@@ -248,4 +248,3 @@ class RoomsView(View):
             'q': q
         }
         return render(request, "rooms.html", context)
-#
